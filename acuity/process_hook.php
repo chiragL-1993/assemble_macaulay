@@ -39,7 +39,7 @@ $access_token = "jiccDUHpx3gIazD8ltjVx7EMdJQAwNBEv6g2N5hK"; //TODO - Need to rep
 ));
 
 $sc->log->debug("Webhook Received", ["data" => $_POST]);
-
+//$sc->log->info("Webhook Received", ["data" => $_POST]);
 //exit; // Remove this line when we have the Acuity Account details for Assemble & ready to go live
 
 if (!isset($_POST["action"]) || !isset($_POST["id"])) {
@@ -184,18 +184,23 @@ if ($row) {
         $match = checkExistence($module, $email, $mobile);
     }
 
-    $apartment_type = null;
+    //$apartment_type = null;
+    $apartment_type = "";
     if ($app["appointmentTypeID"] == 83513080 || $app["appointmentTypeID"] == 83001433) {
-        $apartment_type = ["1 Bedroom Apartment"];
+        //$apartment_type = ["1 Bedroom Apartment"];
+        $apartment_type = "1 Bedroom Apartment";
         $noBedrooms = 1;
     } else if ($app["appointmentTypeID"] == 83513099 || $app["appointmentTypeID"] == 83513055) {
-        $apartment_type = ["2 Bedroom Apartment"];
+        //$apartment_type = ["2 Bedroom Apartment"];
+        $apartment_type = "2 Bedroom Apartment";
         $noBedrooms = 2;
     } else if ($app["appointmentTypeID"] == 83513137 || $app["appointmentTypeID"] == 83513155) {
-        $apartment_type = ["3 Bedroom Apartment"];
+        //$apartment_type = ["3 Bedroom Apartment"];
+        $apartment_type = "3 Bedroom Apartment";
         $noBedrooms = 3;
     } else if ($app["appointmentTypeID"] == 83001609) {
-        $apartment_type = ["Studio Apartment"];
+        //$apartment_type = ["Studio Apartment"];
+        $apartment_type = "Studio Apartment";
         $noBedrooms = "Studio";
     }
 
@@ -207,12 +212,12 @@ if ($row) {
         "Inspection_Date_Time" => $start_time->format("c"),
         "Acuity_Inspection_URL" => $app["confirmationPage"],
         "Submit_application" => '',
-        "Type1" => $apartment_type,
+        "Apartment_Type" => $apartment_type,
         "Do_you_have_pets" => $havePet,
         "Number_of_Bedrooms_NEW" => (string)$noBedrooms,
         "Inspection_Scheduled_By" => isset($app["scheduledBy"]) ? $app["scheduledBy"] : ""
     ];
-
+    
     $noteIns = ZCRMNote::getInstance();
     $noteIns->setContent("Lead booked inspection for " . $start_time->format("H:iA d/m/Y") . ".");
     $noteIns->setTitle("Inspection Booked");
@@ -254,7 +259,7 @@ if ($row) {
             exit;
         }
         //
-        if ($app["appointmentTypeID"] == 70298754 || $app["appointmentTypeID"] == 70299066) {
+        if ($app["appointmentTypeID"] == 70298754 || $app["appointmentTypeID"] == 70299066 ) {
             $currentTags = $match->getTags();
             $currentTagNames = [];
             foreach ($currentTags as $tag) {
@@ -300,13 +305,28 @@ if ($row) {
         } else {
             $lead["Source_NEW"] = "Scheduler";
             $lead["Method_NEW"] = "Web";
-        }
+        }        
         $lead["Enquiry_Booking_Status"] = "New - Inspection Booked";
         $lead["Number_of_Inspections"] = 1;
         try {
             $res = $sc->zoho->createRecord($module, $lead, ["workflow"]);
             $recordId = $res["id"];
             $sc->log->info("Success creating $module $recordId for Acuity appt with id $appointment_id.");
+            // The tag for Affordable must be added in a separate step after creation.
+            $tag_to_add = null;
+            if ($calendar_id == "12756907") {
+                $tag_to_add = "Affordable";
+            }
+            if ($tag_to_add) {
+
+                // a. Fetch the newly created record as a ZCRMRecord object
+                $new_record = $sc->zoho->getRecord($module, $recordId); 
+
+                // b. Call the working addTags method on the ZCRMRecord object
+                $tag_res = $new_record->addTags([$tag_to_add]);
+
+                $sc->log->info("Success adding tag '$tag_to_add' to Lead $recordId.");
+            }
         } catch (Exception $e) {
             $sc->log->error("Error while adding $module to CRM for Acuity appt with id $appointment_id. " . $e->getMessage() . " " . json_encode($e->getExceptionDetails()));
             exit;

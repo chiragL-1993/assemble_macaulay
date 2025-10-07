@@ -26,7 +26,7 @@ $moduleName = $_GET['module'];
 $recordId = $_GET["record_id"];
 
 try{
-    $res = $sc->zoho->updateRecord($moduleName, $recordId, ["Marketing_Opt_Out" => true], []);
+    $res = $sc->zoho->updateRecord($moduleName, $recordId, ["Marketing_Opt_Out" => true], ["workflow"]);
     $sc->log->debug("Success unsubscribing record.", [
         "module" => $moduleName,
         "record_id" => $recordId
